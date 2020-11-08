@@ -1,5 +1,5 @@
-# simplewmqttclient
-A MQTT client module for Crestron 3-Series Control Systems written in SIMPL#
+# simplewmqttbroker
+A MQTT Broker module for Crestron 3-Series Control Systems written in SIMPL#
 
 
 ## Donation
