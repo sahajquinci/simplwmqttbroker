@@ -1,0 +1,76 @@
+#CATEGORY "31" // Digital Operations
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+#SYMBOL_NAME "Mqtt_Broker 1.0"
+#USER_SIMPLSHARP_LIBRARY "sahajquinci.MQTT_Broker"
+STRING_PARAMETER Userename[20];
+STRING_PARAMETER Password[20];
+INTEGER_PARAMETER ControlSytemAuthentication;
+INTEGER_PARAMETER Port;
+INTEGER_PARAMETER SSLCertificateProvided;
+STRING_PARAMETER SSLCertificateFileName[30];
+STRING_PARAMETER SSLPrivateKeyFileName[30];
+INTEGER_PARAMETER WSS;
+INTEGER_PARAMETER WebSocketServerPort;
+ANALOG_INPUT _skip_,_skip_,_skip_,_skip_,_skip_,_skip_,_skip_,_skip_,logLevel;
+DIGITAL_OUTPUT _skip_,_skip_,_skip_,_skip_,_skip_,_skip_,_skip_;
+MqttBrokerStart broker;
+
+
+#BEGIN_PARAMETER_PROPERTIES SSLCertificateProvided
+propDefaultValue = 0d;
+propList= { 0d ,"false - use the control system's one" },{ 1d , "true - use the provided ones" };                       
+#BEGIN_PROP_FULL_DESCRIPTION
+#END_PROP_FULL_DESCRIPTION
+#BEGIN_PROP_NOTES
+#END_PROP_NOTES
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES WSS, ControlSytemAuthentication
+propDefaultValue = 1d;
+propList= { 0d ,"false" },{ 1d , "true" };                       
+#BEGIN_PROP_FULL_DESCRIPTION
+#END_PROP_FULL_DESCRIPTION
+#BEGIN_PROP_NOTES
+#END_PROP_NOTES
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES Port
+propDefaultUnit = unitDecimal;
+propBounds= 1025d , 65535d;   
+propDefaultValue = 8883d;
+propShortDescription= "Connection Port";                
+#BEGIN_PROP_FULL_DESCRIPTION
+#END_PROP_FULL_DESCRIPTION
+#BEGIN_PROP_NOTES
+  "RFC 1700 , the first not reserved port is the 1025"
+#END_PROP_NOTES
+#END_PARAMETER_PROPERTIES
+
+
+#BEGIN_PARAMETER_PROPERTIES WebSocketServerPort
+propDefaultUnit = unitDecimal;
+propBounds= 1025d , 65535d;   
+propDefaultValue = 9001d;
+propShortDescription= "Connection Port";                
+#BEGIN_PROP_FULL_DESCRIPTION
+#END_PROP_FULL_DESCRIPTION
+#BEGIN_PROP_NOTES
+  "RFC 1700 , the first not reserved port is the 1025"
+#END_PROP_NOTES
+#END_PARAMETER_PROPERTIES
+
+
+THREADSAFE CHANGE logLevel
+{
+	broker.SetLogLevel(logLevel);
+}
+
+function Main()
+{
+	WaitForInitializationComplete();
+	broker.InitializeBis(Userename,Password,ControlSytemAuthentication,Port,SSLCertificateProvided,SSLCertificateFileName,SSLPrivateKeyFileName,WSS,WebSocketServerPort);
+}
+
+
