@@ -13,8 +13,8 @@ STRING_PARAMETER SSLCertificateFileName[30];
 STRING_PARAMETER SSLPrivateKeyFileName[30];
 INTEGER_PARAMETER WSS;
 INTEGER_PARAMETER WebSocketServerPort;
-ANALOG_INPUT _skip_,_skip_,_skip_,_skip_,_skip_,_skip_,_skip_,_skip_,logLevel;
-DIGITAL_OUTPUT _skip_,_skip_,_skip_,_skip_,_skip_,_skip_,_skip_;
+ANALOG_INPUT _skip_,_skip_,_skip_,_skip_,_skip_,_skip_,_skip_,_skip_,_skip_,_skip_,logLevel;
+DIGITAL_OUTPUT _skip_,_skip_,_skip_,_skip_,_skip_,_skip_,_skip_,_skip_,_skip_;
 MqttBrokerStart broker;
 
 
