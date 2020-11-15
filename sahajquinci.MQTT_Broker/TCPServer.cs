@@ -14,7 +14,7 @@ namespace sahajquinci.MQTT_Broker
 {
     public class TCPServer : ServerBase
     {
-
+        private Dictionary<uint, List<byte>> oldDecodedFrame = new Dictionary<uint, List<byte>>();
         public TCPServer(List<MqttClient> clients, SessionManager sessionManager, List<ushort> packetIdentifiers,Random rand, int port, int numberOfConnections) 
             : base ( clients,  sessionManager ,  packetIdentifiers, rand, port,  numberOfConnections)
         {
@@ -28,6 +28,7 @@ namespace sahajquinci.MQTT_Broker
                 Server.WaitForConnectionAsync(IPAddress.Parse("0.0.0.0"), this.ConnectionCallback);
                 if (Server.ClientConnected(clientIndex))
                 {
+                    oldDecodedFrame.Add(clientIndex, new List<byte>());
                     int lenghtOfData = Server.ReceiveData(clientIndex);
                     byte[] data = Server.GetIncomingDataBufferForSpecificClient(clientIndex);
                     MqttMsgBase packet = PacketDecoder.DecodeControlPacket(data);
@@ -56,12 +57,12 @@ namespace sahajquinci.MQTT_Broker
         {
             try
             {
-                if (numberOfBytesReceived != 0)
+                if (numberOfBytesReceived > 0 && myTCPServer.GetIncomingDataBufferForSpecificClient(clientIndex) != null)
                 {
                     byte[] data = new byte[numberOfBytesReceived];
                     Array.Copy(myTCPServer.GetIncomingDataBufferForSpecificClient(clientIndex), data, numberOfBytesReceived);
-                    Server.ReceiveDataAsync(clientIndex, ReceiveCallback);
-                    DecodeMultiplePacketsByteArray(clientIndex, data);
+                    myTCPServer.ReceiveDataAsync(clientIndex, ReceiveCallback);
+                    ParseFrame(clientIndex, data);
                 }
             }
             catch (Exception e)
@@ -73,28 +74,59 @@ namespace sahajquinci.MQTT_Broker
             }
         }
 
+        private void ParseFrame(uint clientIndex, byte[] data)
+        {
+            try
+            {
+                byte[] allData = data;
+                if (oldDecodedFrame[clientIndex].Count > 0)
+                {
+                    allData = new byte[data.Length + oldDecodedFrame[clientIndex].Count];
+                    oldDecodedFrame[clientIndex].CopyTo(allData, 0);
+                    Array.Copy(data, 0, allData, oldDecodedFrame[clientIndex].Count, data.Length);
+                    oldDecodedFrame[clientIndex].Clear();
+                }
+                DecodeMultiplePacketsByteArray(clientIndex, allData);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
         override protected void DecodeMultiplePacketsByteArray(uint clientIndex, byte[] data)
         {
-            List<MqttMsgBase> packetsInTheByteArray = new List<MqttMsgBase>();
-            int numberOfBytesProcessed = 0;
-            int numberOfBytesToProcess = 0;
-            int numberOfBytesReceived = data.Length;
-            byte[] packetByteArray;
-            MqttMsgBase tmpPacket = new MqttMsgSubscribe();
-            while (numberOfBytesProcessed != numberOfBytesReceived)
+            lock (oldDecodedFrame)
             {
-                int remainingLength = MqttMsgBase.decodeRemainingLength(data);
-                int remainingLenghtIndex = tmpPacket.encodeRemainingLength(remainingLength, data, 1);
-                numberOfBytesToProcess = remainingLength + remainingLenghtIndex;
-                packetByteArray = new byte[numberOfBytesToProcess];
-                Array.Copy(data, 0, packetByteArray, 0, numberOfBytesToProcess);
+                int numberOfBytesProcessed = 0;
+                int numberOfBytesToProcess = 0;
+                int numberOfBytesReceived = data.Length;
+                byte[] packetByteArray;
+                List<byte> packets = new List<byte>();
+                MqttMsgBase tmpPacket = new MqttMsgSubscribe();
+                try
                 {
-                    byte[] tmp = new byte[data.Length - numberOfBytesToProcess];
-                    Array.Copy(data, numberOfBytesToProcess, tmp, 0, tmp.Length);
-                    data = tmp;
+                    while (numberOfBytesProcessed != numberOfBytesReceived)
+                    {
+                        int remainingLength = MqttMsgBase.decodeRemainingLength(data);
+                        int remainingLenghtIndex = tmpPacket.encodeRemainingLength(remainingLength, data, 1);
+                        numberOfBytesToProcess = remainingLength + remainingLenghtIndex;
+                        packetByteArray = new byte[numberOfBytesToProcess];
+                        Array.Copy(data, 0, packetByteArray, 0, numberOfBytesToProcess);
+                        MqttMsgBase packet = PacketDecoder.DecodeControlPacket(packetByteArray);
+                        OnPacketReceived(clientIndex, packet, false);
+                        {
+                            byte[] tmp = new byte[data.Length - numberOfBytesToProcess];
+                            Array.Copy(data, numberOfBytesToProcess, tmp, 0, tmp.Length);
+                            data = tmp;
+                        }
+                        numberOfBytesProcessed += numberOfBytesToProcess;
+                    }
                 }
-                numberOfBytesProcessed += numberOfBytesToProcess;
-                OnPacketReceived(clientIndex, PacketDecoder.DecodeControlPacket(packetByteArray) , false);
+                catch (Exception e)
+                {
+                    oldDecodedFrame[clientIndex].AddRange(data);
+                }
             }
         }
 
@@ -116,6 +148,7 @@ namespace sahajquinci.MQTT_Broker
             }
             finally
             {
+               oldDecodedFrame.Remove(clientIndex);
                Clients.Remove(client);
             }
         }
