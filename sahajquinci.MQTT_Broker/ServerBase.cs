@@ -14,6 +14,7 @@ namespace sahajquinci.MQTT_Broker
 {
     public abstract class ServerBase
     {
+        protected Dictionary<uint, List<byte>> oldDecodedFrame = new Dictionary<uint, List<byte>>();
         protected SecureTCPServer Server { get; set; }
         protected SessionManager SessionManager { get; set; }
         protected List<MqttClient> Clients { get; set; }
@@ -41,9 +42,44 @@ namespace sahajquinci.MQTT_Broker
         public abstract void Send(uint clientIndex, byte[] buffer);
         public abstract void Receive(uint clientIndex);
         protected abstract void ReceiveCallback(SecureTCPServer myTCPServer, uint clientIndex, int numberOfBytesReceived);
-        protected abstract void DecodeMultiplePacketsByteArray(uint clientIndex, byte[] data);
         public abstract void DisconnectClient(uint clientIndex, bool withDisconnectPacket);
         public abstract void RejectConnection(uint clientIndex);
+
+        protected void DecodeMultiplePacketsByteArray(uint clientIndex, byte[] data, bool isWebSocketClient)
+        {
+            lock (oldDecodedFrame)
+            {
+                int numberOfBytesProcessed = 0;
+                int numberOfBytesToProcess = 0;
+                int numberOfBytesReceived = data.Length;
+                byte[] packetByteArray;
+                List<byte> packets = new List<byte>();
+                MqttMsgBase tmpPacket = new MqttMsgSubscribe();
+                try
+                {
+                    while (numberOfBytesProcessed != numberOfBytesReceived)
+                    {
+                        int remainingLength = MqttMsgBase.decodeRemainingLength(data);
+                        int remainingLenghtIndex = tmpPacket.encodeRemainingLength(remainingLength, data, 1);
+                        numberOfBytesToProcess = remainingLength + remainingLenghtIndex;
+                        packetByteArray = new byte[numberOfBytesToProcess];
+                        Array.Copy(data, 0, packetByteArray, 0, numberOfBytesToProcess);
+                        MqttMsgBase packet = PacketDecoder.DecodeControlPacket(packetByteArray);
+                        OnPacketReceived(clientIndex, packet, isWebSocketClient);
+                        {
+                            byte[] tmp = new byte[data.Length - numberOfBytesToProcess];
+                            Array.Copy(data, numberOfBytesToProcess, tmp, 0, tmp.Length);
+                            data = tmp;
+                        }
+                        numberOfBytesProcessed += numberOfBytesToProcess;
+                    }
+                }
+                catch (Exception e)
+                {
+                    oldDecodedFrame[clientIndex].AddRange(data);
+                }
+            }
+        }
 
         protected void SendCallback(SecureTCPServer myTCPServer, uint clientIndex, int numberOfBytesSent)
         {
