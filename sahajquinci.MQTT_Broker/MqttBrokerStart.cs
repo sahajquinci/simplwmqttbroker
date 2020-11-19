@@ -50,8 +50,8 @@ namespace sahajquinci.MqttBroker
             rand = new Random();          
             packetIdentifiers = new List<ushort>();
 
-            TCPServer tcpServer = new TCPServer(clients, sessionManager, packetIdentifiers, rand, Convert.ToInt32(port), 30);
-            WSServer webSocketServer = new WSServer(clients, sessionManager, packetIdentifiers, rand, Convert.ToInt32(webSocketServerPort), 30);
+            TCPServer tcpServer = new TCPServer(clients, sessionManager, packetIdentifiers, rand, Convert.ToInt32(port), 60);
+            WSServer webSocketServer = new WSServer(clients, sessionManager, packetIdentifiers, rand, Convert.ToInt32(webSocketServerPort), 60);
             PacketManager pm = new PacketManager(rand, sessionManager, publishManager, subscriptionManager, clients, packetIdentifiers, tcpServer, webSocketServer);
 
         }
