@@ -7,7 +7,8 @@ A MQTT Broker module for Crestron 3-Series Control Systems written in SIMPL#
 ![alt text](SSL.png " The default settings work fine as well.")
 
 Fill the information required for the connection as in the image
-**THE WSS True/False choice is useless**
+**THE WSS True/False choice is useless** <br /> 
+**Broker doesn't support reconnection. Any connection MUST start with clean session true**
 ![alt text](Example.png "Example")
 
 
