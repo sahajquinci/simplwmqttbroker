@@ -33,7 +33,7 @@ namespace sahajquinci.MQTT_Broker
             Rand = rand;
             this.Port = port;
             this.NumberOfConnections = numberOfConnections;
-            Server = new SecureTCPServer(port, 4096, EthernetAdapterType.EthernetLANAdapter, numberOfConnections);
+            Server = new SecureTCPServer(port, 4096, EthernetAdapterType.EthernetUnknownAdapter, numberOfConnections);
             Server.SocketStatusChange += OnSocketStatusChange;
             Server.WaitForConnectionAsync(IPAddress.Parse("0.0.0.0"), this.ConnectionCallback);
         }
