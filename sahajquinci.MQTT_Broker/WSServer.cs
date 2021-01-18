@@ -327,7 +327,8 @@ namespace sahajquinci.MQTT_Broker
                     SendCloseFrame(clientIndex);
                     Server.Disconnect(clientIndex);
                 }
-                OnClientDisconnected(client, withDisconnectPacket);
+                if (client != null)
+                    OnClientDisconnected(client, withDisconnectPacket);
             }
             catch (Exception e)
             {
@@ -336,7 +337,8 @@ namespace sahajquinci.MQTT_Broker
             }
             finally
             {
-                Clients.Remove(client);
+                if(client != null)
+                    Clients.Remove(client);
             }
         }
 
