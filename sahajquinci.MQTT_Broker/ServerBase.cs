@@ -33,7 +33,7 @@ namespace sahajquinci.MQTT_Broker
             Rand = rand;
             this.Port = port;
             this.NumberOfConnections = numberOfConnections;
-            Server = new SecureTCPServer(port, 4096, EthernetAdapterType.EthernetUnknownAdapter, numberOfConnections);
+            Server = new SecureTCPServer("0.0.0.0", port, 4096, EthernetAdapterType.EthernetUnknownAdapter, numberOfConnections);
             Server.SocketStatusChange += OnSocketStatusChange;
             Server.WaitForConnectionAsync(IPAddress.Parse("0.0.0.0"), this.ConnectionCallback);
         }
@@ -65,13 +65,21 @@ namespace sahajquinci.MQTT_Broker
                         packetByteArray = new byte[numberOfBytesToProcess];
                         Array.Copy(data, 0, packetByteArray, 0, numberOfBytesToProcess);
                         MqttMsgBase packet = PacketDecoder.DecodeControlPacket(packetByteArray);
-                        OnPacketReceived(clientIndex, packet, isWebSocketClient);
+                        if (packet.Type == MqttMsgBase.MQTT_MSG_CONNECT_TYPE && GetClientByIndex(clientIndex, isWebSocketClient) == null ||
+                            packet.Type != MqttMsgBase.MQTT_MSG_CONNECT_TYPE && GetClientByIndex(clientIndex, isWebSocketClient) != null)
                         {
-                            byte[] tmp = new byte[data.Length - numberOfBytesToProcess];
-                            Array.Copy(data, numberOfBytesToProcess, tmp, 0, tmp.Length);
-                            data = tmp;
+                            OnPacketReceived(clientIndex, packet, isWebSocketClient);
+                            {
+                                byte[] tmp = new byte[data.Length - numberOfBytesToProcess];
+                                Array.Copy(data, numberOfBytesToProcess, tmp, 0, tmp.Length);
+                                data = tmp;
+                            }
+                            numberOfBytesProcessed += numberOfBytesToProcess;
                         }
-                        numberOfBytesProcessed += numberOfBytesToProcess;
+                        else
+                        {
+                          DisconnectClient(clientIndex, isWebSocketClient);
+                        }
                     }
                 }
                 catch (Exception e)
@@ -122,6 +130,7 @@ namespace sahajquinci.MQTT_Broker
         {
             if (serverSocketStatus != SocketStatus.SOCKET_STATUS_CONNECTED)
             {
+                CrestronConsole.PrintLine("Socket Status Change Disconnecting!");
                 DisconnectClient(clientIndex, false);
             }
         }
@@ -133,7 +142,7 @@ namespace sahajquinci.MQTT_Broker
                         where client.ClientIndex.Equals(clientIndex) && (client.IsWebSocketClient == isWebSocketClient)
                         select client;
 
-            return query.First();
+            return query.FirstOrDefault();
         }
 
         internal ushort GetNewPacketIdentifier()

@@ -14,8 +14,8 @@ namespace sahajquinci.MQTT_Broker
 {
     public class TCPServer : ServerBase
     {
-        public TCPServer(List<MqttClient> clients, SessionManager sessionManager, List<ushort> packetIdentifiers,Random rand, int port, int numberOfConnections) 
-            : base ( clients,  sessionManager ,  packetIdentifiers, rand, port,  numberOfConnections)
+        public TCPServer(List<MqttClient> clients, SessionManager sessionManager, List<ushort> packetIdentifiers, Random rand, int port, int numberOfConnections)
+            : base(clients, sessionManager, packetIdentifiers, rand, port, numberOfConnections)
         {
             ;
         }
@@ -28,13 +28,7 @@ namespace sahajquinci.MQTT_Broker
                 if (Server.ClientConnected(clientIndex))
                 {
                     oldDecodedFrame.Add(clientIndex, new List<byte>());
-                    int lenghtOfData = Server.ReceiveData(clientIndex);
-                    byte[] data = Server.GetIncomingDataBufferForSpecificClient(clientIndex);
-                    MqttMsgBase packet = PacketDecoder.DecodeControlPacket(data);
-                    if (packet.Type == MqttMsgBase.MQTT_MSG_CONNECT_TYPE)
-                        OnPacketReceived(clientIndex, packet,false);
-                    else
-                        throw new ArgumentException("Attempted connection with a non CONNECT packet");
+                    server.ReceiveDataAsync(clientIndex, ReceiveCallback);
                 }
             }
             catch (Exception e)
@@ -43,7 +37,7 @@ namespace sahajquinci.MQTT_Broker
             }
         }
 
-        override  public void Send(uint clientIndex, byte[] buffer)
+        override public void Send(uint clientIndex, byte[] buffer)
         {
             Server.SendDataAsync(clientIndex, buffer, buffer.Length, SendCallback);
         }
@@ -85,7 +79,7 @@ namespace sahajquinci.MQTT_Broker
                     Array.Copy(data, 0, allData, oldDecodedFrame[clientIndex].Count, data.Length);
                     oldDecodedFrame[clientIndex].Clear();
                 }
-                DecodeMultiplePacketsByteArray(clientIndex, allData,false);
+                DecodeMultiplePacketsByteArray(clientIndex, allData, false);
             }
             catch (Exception)
             {
@@ -95,14 +89,18 @@ namespace sahajquinci.MQTT_Broker
 
         override public void DisconnectClient(uint clientIndex, bool withDisconnectPacket)
         {
-            MqttClient client = GetClientByIndex(clientIndex,false);
+            MqttClient client = GetClientByIndex(clientIndex, false);
+
             try
             {
                 if (Server.ClientConnected(clientIndex))
                 {
                     var res = Server.Disconnect(clientIndex);
                 }
-                OnClientDisconnected(client, withDisconnectPacket);
+                if (client != null)
+                {
+                    OnClientDisconnected(client, withDisconnectPacket);
+                }
             }
             catch (Exception e)
             {
@@ -111,8 +109,11 @@ namespace sahajquinci.MQTT_Broker
             }
             finally
             {
-               oldDecodedFrame.Remove(clientIndex);
-               Clients.Remove(client);
+                oldDecodedFrame.Remove(clientIndex);
+                if (client != null)
+                {
+                    Clients.Remove(client);
+                }
             }
         }
 
